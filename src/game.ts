@@ -53,11 +53,14 @@ enum ShooterType {
   Player,
   Enemy,
 }
-class Shooter extends PIXI.Graphics {
+class Shooter extends PIXI.Container {
   radius: number;
   shootTime: number;
   uuid: string;
   shooterType: ShooterType;
+  health: number;
+  body: PIXI.Graphics;
+  hp: PIXI.Graphics;
 
   constructor() {
     super();
@@ -67,9 +70,29 @@ class Shooter extends PIXI.Graphics {
     this.uuid = crypto.randomUUID();
     this.shooterType = ShooterType.Enemy;
 
-    this.beginFill(0xffffff);
-    this.drawCircle(0, 0, this.radius);
-    this.endFill();
+    this.health = 1;
+
+    this.body = new PIXI.Graphics();
+
+    this.body.beginFill(0xffffff);
+    this.body.drawCircle(0, 0, this.radius);
+    this.body.endFill();
+
+    this.addChild(this.body);
+
+    this.hp = new PIXI.Graphics();
+    this.updateHP();
+    this.addChild(this.hp);
+  }
+  updateHP() {
+    this.hp.clear();
+    this.hp.beginFill(0xffffff);
+    this.hp.drawRoundedRect(-30, this.radius + 10, 60, 8, 2);
+    this.hp.endFill();
+
+    this.hp.beginFill(0xff6c6c);
+    this.hp.drawRoundedRect(-30, this.radius + 10, 60 * this.health, 8, 2);
+    this.hp.endFill();
   }
   shoot(world: World) {
     if (Date.now() - this.shootTime < 100) return;
@@ -90,6 +113,19 @@ class Shooter extends PIXI.Graphics {
   lookat(vector: Vector2) {
     const relativeVector = vector.substract(this.getVector());
     this.rotation = Math.atan2(relativeVector.y, relativeVector.x);
+  }
+  onAttacked(world: World, direction: number) {
+    this.health -= 0.1;
+    this.updateHP();
+    this.move(new Vector2(Math.cos(direction) * 8, Math.sin(direction) * 8));
+
+    if (this.health <= 0) {
+      world.view.removeChild(this);
+      const index = world.shooters.findIndex((v) => v.uuid == this.uuid);
+
+      if (index != -1) world.shooters.splice(index, 1);
+      this.onDead();
+    }
   }
   onDead() {}
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -185,16 +221,14 @@ class Bullet extends PIXI.Graphics {
     }
 
     world.shooters.forEach(
-      ((shooter: Shooter, index: number) => {
+      ((shooter: Shooter) => {
         if (this.isCollide(shooter)) {
           const thisIndex = world.bullets.findIndex((v) => v.uuid == this.uuid);
           if (thisIndex != -1) {
             world.view.removeChild(this);
             world.bullets.splice(thisIndex, 1);
           }
-          shooter.onDead();
-          world.view.removeChild(shooter);
-          world.shooters.splice(index, 1);
+          shooter.onAttacked(world, this.rotation);
         }
       }).bind(this)
     );

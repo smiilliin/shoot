@@ -74,10 +74,10 @@ app.ticker.add(() => {
     if (pressedKeys.indexOf(" ") != -1) {
       player.shoot(world);
     }
-
-    view.x = -player.x * view.scale.x + window.innerWidth / 2;
-    view.y = -player.y * view.scale.y + window.innerHeight / 2;
   }
 
   world.tick();
+
+  view.x = -player.x * view.scale.x + window.innerWidth / 2;
+  view.y = -player.y * view.scale.y + window.innerHeight / 2;
 });
